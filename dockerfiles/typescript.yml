@@ -40,6 +40,8 @@ RUN yarn install --frozen-lockfile --production=true
 # Delete source files
 RUN rm -Rf ./src
 
-# Export port in:out
+# Expose port in:out
 EXPOSE 8080:9688
+
+# Start the API
 CMD yarn start
