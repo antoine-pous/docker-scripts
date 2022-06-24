@@ -1,0 +1,45 @@
+FROM ubuntu:20.04
+SHELL ["/bin/bash", "--login", "-i", "-c"]
+
+# Update Ubuntu repository
+RUN apt-get update
+
+# Upgrade Ubuntu packages
+RUN apt-get upgrade -y
+
+# Install cURL
+RUN apt-get install curl -y
+
+# Add current working directory to container at /var/www/api
+ADD . /var/www/api
+
+# Setting up our working directory
+WORKDIR /var/www/api
+
+# Read .nvmrc and expose it's content as NODE_VERSION
+RUN export NODE_VERSION=$(cat .nvmrc)
+
+# Installing Node
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+RUN source /root/.bashrc && nvm install $NODE_VERSION --default
+
+# Install globally yarn
+RUN npm install yarn --global
+
+# Install dev packages
+RUN rm -Rf ./node_modules
+RUN yarn install --frozen-lockfile --production=false
+
+# Build API
+RUN yarn build
+
+# Reinstall production packages
+RUN rm -Rf ./node_modules
+RUN yarn install --frozen-lockfile --production=true
+
+# Delete source files
+RUN rm -Rf ./src
+
+# Export port in:out
+EXPOSE 8080:9688
+CMD yarn start
