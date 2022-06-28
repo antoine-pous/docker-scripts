@@ -1,30 +1,11 @@
-FROM ubuntu:20.04
-SHELL ["/bin/bash", "--login", "-i", "-c"]
+ARG NODE_VERSION
+FROM node:${NODE_VERSION}-alpine as builder
 
-# Update Ubuntu repository
-RUN apt-get update
-
-# Upgrade Ubuntu packages
-RUN apt-get upgrade -y
-
-# Install cURL
-RUN apt-get install curl -y
-
-# Add current directory to /var/www/api
-ADD . /var/www/api
+# Add current working directory to container at /var/www/api
+ADD . /api
 
 # Setting up our working directory
-WORKDIR /var/www/api
-
-# Read .nvmrc and expose it's content as NODE_VERSION
-RUN export NODE_VERSION=$(cat .nvmrc)
-
-# Installing Node
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-RUN source /root/.bashrc && nvm install $NODE_VERSION --default
-
-# Install globally yarn
-RUN npm install yarn --global
+WORKDIR /api
 
 # Install dev packages
 RUN rm -Rf ./node_modules
@@ -40,8 +21,25 @@ RUN yarn install --frozen-lockfile --production=true
 # Delete source files
 RUN rm -Rf ./src
 
+# Release image
+FROM node:${NODE_VERSION}-alpine as release
+
+# Update image and install required tools / apps
+RUN apk update  \
+  && apk add bash \
+  && apk add postgresql-client
+
+# Copy built image content
+COPY --from=builder /api /api
+
+# Setting up our working directory
+WORKDIR /api
+
 # Expose port in:out
 EXPOSE 8080:9688
-
-# Start the API
 CMD yarn start
+
+###########
+## BUILD ##
+###########
+# docker build -t <container_name> <path> --build-arg NODE_VERSION=18.1.0
